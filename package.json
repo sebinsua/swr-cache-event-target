@@ -1,6 +1,6 @@
 {
   "name": "swr-cache-event-target",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A swr cache with synchronous reads, background refreshes and event emitting.",
   "author": "Seb Insua",
   "license": "MIT",
