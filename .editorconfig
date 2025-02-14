@@ -1,0 +1,17 @@
+# EditorConfig helps maintain consistent coding styles across various editors and IDEs
+
+# Indicate that this is the root EditorConfig file
+root = true
+
+# Default settings for all files
+[*]
+indent_style = space
+indent_size = 2
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Specific settings for markdown files
+[*.md]
+trim_trailing_whitespace = false

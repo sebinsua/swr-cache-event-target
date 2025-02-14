@@ -1,0 +1,58 @@
+{
+  "name": "swr-cache-event-target",
+  "version": "0.0.0",
+  "description": "A swr cache with synchronous reads, background refreshes and event emitting.",
+  "author": "Seb Insua",
+  "license": "MIT",
+  "repository": "sebinsua/swr-cache-event-target",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/es/index.mjs",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/es/index.d.mts",
+        "default": "./dist/es/index.mjs"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "bunchee",
+    "dev": "TZ=UTC vitest",
+    "test": "TZ=UTC vitest run",
+    "coverage": "TZ=UTC vitest run --coverage",
+    "check": "npm run check:types && npm run check:lint",
+    "check:lint": "biome check .",
+    "check:types": "tsc --noEmit"
+  },
+  "keywords": [
+    "swr",
+    "cache",
+    "event",
+    "target",
+    "simple",
+    "background",
+    "synchronous",
+    "asynchronous",
+    "emitter"
+  ],
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.0.0",
+    "biome": "^0.3.3",
+    "bunchee": "^6.3.0",
+    "prettier": "^3.5.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
