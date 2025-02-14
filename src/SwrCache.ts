@@ -144,13 +144,7 @@ export class SwrCache<Param, Value> extends EventTarget {
     }
   }
 
-  read(param: Param): Promise<Value> | Value {
-    if (this.abortController.signal.aborted) {
-      return Promise.reject(
-        new Error("Cache instance has been destroyed and is no longer viable."),
-      );
-    }
-
+  #getEntry(param: Param): [key: string, entry: CacheEntry<Param, Value>] {
     const key = this.config.getKey(param);
     const entry = this.cache.get(key);
     const currentEpoch = this.epoch;
@@ -186,15 +180,27 @@ export class SwrCache<Param, Value> extends EventTarget {
         },
       );
 
-      this.cache.set(key, {
+      const entry: CacheEntry<Param, Value> = {
         promise,
         expiry: performance.now() + this.config.ttlMs,
         param,
-      });
+      };
+      this.cache.set(key, entry);
 
-      return promise;
+      return [key, entry];
     }
 
+    return [key, entry];
+  }
+
+  getAsync(param: Param): PromiseWithMeta<Value> {
+    if (this.abortController.signal.aborted) {
+      return Promise.reject(
+        new Error("Cache instance has been destroyed and is no longer viable."),
+      );
+    }
+
+    const [key, entry] = this.#getEntry(param);
     if (
       entry.promise.status === "fulfilled" &&
       entry.promise.value !== undefined
@@ -213,14 +219,22 @@ export class SwrCache<Param, Value> extends EventTarget {
 
         void this.refreshEntry(key, entry, this.epoch);
       }
-      return entry.promise.value;
     }
 
     return entry.promise;
   }
 
+  read(param: Param): Value | PromiseWithMeta<Value> {
+    const promise = this.getAsync(param);
+    if (promise.status === "fulfilled" && promise.value !== undefined) {
+      return promise.value;
+    }
+
+    return promise;
+  }
+
   prime(param: Param) {
-    void this.read(param);
+    void this.getAsync(param);
   }
 
   peek(param: Param): Value | undefined {
