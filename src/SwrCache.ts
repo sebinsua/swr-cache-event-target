@@ -102,7 +102,7 @@ export class SwrCache<Param, Value> extends EventTarget {
 
       this.cache.set(key, {
         promise: promise,
-        expiry: Date.now() + this.config.ttlMs,
+        expiry: performance.now() + this.config.ttlMs,
         param: entry.param,
       });
 
@@ -132,7 +132,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       return;
     }
 
-    const now = Date.now();
+    const now = performance.now();
     const staleEntries = Array.from(this.cache.entries()).filter(
       ([_, entry]) =>
         entry.expiry <= now && entry.promise.status === "fulfilled",
@@ -188,7 +188,7 @@ export class SwrCache<Param, Value> extends EventTarget {
 
       this.cache.set(key, {
         promise,
-        expiry: Date.now() + this.config.ttlMs,
+        expiry: performance.now() + this.config.ttlMs,
         param,
       });
 
@@ -199,7 +199,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       entry.promise.status === "fulfilled" &&
       entry.promise.value !== undefined
     ) {
-      const now = Date.now();
+      const now = performance.now();
       if (entry.expiry <= now) {
         this.dispatchEvent(
           new CustomEvent("cache:change", {
@@ -234,7 +234,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       entry.promise.status === "fulfilled" &&
       entry.promise.value !== undefined
     ) {
-      const now = Date.now();
+      const now = performance.now();
       if (entry.expiry <= now) {
         this.prime(param);
       }
