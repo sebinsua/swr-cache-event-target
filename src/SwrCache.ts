@@ -37,14 +37,14 @@ export type CacheEntry<P, V> = {
 export type SwrCacheEntryState = "stale" | "resolved" | "rejected";
 
 export type SwrCacheEvents<Param, Value> = {
-  "cache:change": CustomEvent<{
+  "state:update": CustomEvent<{
     type: SwrCacheEntryState;
     param: Param;
     value?: Value;
     error?: unknown;
   }>;
-  "cache:prime": CustomEvent<Param>;
-  "cache:clear": CustomEvent<void>;
+  "state:prime": CustomEvent<Param>;
+  "state:reset": CustomEvent<void>;
 };
 
 export type SwrCacheConfig<Param, Value> = {
@@ -76,7 +76,7 @@ export class SwrCache<Param, Value> extends EventTarget {
     }
 
     this.addEventListener(
-      "cache:prime",
+      "state:prime",
       (event) => {
         const param = event.detail;
         this.prime(param);
@@ -110,7 +110,7 @@ export class SwrCache<Param, Value> extends EventTarget {
 
       if (this.epoch === currentEpoch && !this.abortController.signal.aborted) {
         this.dispatchEvent(
-          new CustomEvent("cache:change", {
+          new CustomEvent("state:update", {
             detail: { type: "resolved", param: entry.param, value },
           }),
         );
@@ -119,7 +119,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       if (this.epoch === currentEpoch && !this.abortController.signal.aborted) {
         this.cache.delete(key);
         this.dispatchEvent(
-          new CustomEvent("cache:change", {
+          new CustomEvent("state:update", {
             detail: { type: "rejected", param: entry.param, error },
           }),
         );
@@ -159,7 +159,7 @@ export class SwrCache<Param, Value> extends EventTarget {
             !this.abortController.signal.aborted
           ) {
             this.dispatchEvent(
-              new CustomEvent("cache:change", {
+              new CustomEvent("state:update", {
                 detail: { type: "resolved", param, value },
               }),
             );
@@ -172,7 +172,7 @@ export class SwrCache<Param, Value> extends EventTarget {
           ) {
             this.cache.delete(key);
             this.dispatchEvent(
-              new CustomEvent("cache:change", {
+              new CustomEvent("state:update", {
                 detail: { type: "rejected", param, error },
               }),
             );
@@ -208,7 +208,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       const now = performance.now();
       if (entry.expiry <= now) {
         this.dispatchEvent(
-          new CustomEvent("cache:change", {
+          new CustomEvent("state:update", {
             detail: {
               type: "stale",
               param: entry.param,
@@ -262,7 +262,7 @@ export class SwrCache<Param, Value> extends EventTarget {
   clear() {
     this.epoch++;
     this.cache.clear();
-    this.dispatchEvent(new CustomEvent("cache:clear"));
+    this.dispatchEvent(new CustomEvent("state:reset"));
   }
 
   destroy() {

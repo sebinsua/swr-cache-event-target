@@ -33,7 +33,7 @@ console.log(await cache.read("123"));
 // Subsequent reads are synchronous
 console.log(cache.read("123"));
 
-cache.addEventListener("cache:change", (event) => {
+cache.addEventListener("state:update", (event) => {
   console.log("Cache event:", event.detail);
 });
 ```

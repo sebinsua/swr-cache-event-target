@@ -44,7 +44,7 @@ describe("SwrCache", () => {
     });
 
     let resolvedEvent: CustomEvent | null = null;
-    cache.addEventListener("cache:change", (e) => {
+    cache.addEventListener("state:update", (e) => {
       if (e.detail.type === "resolved") {
         resolvedEvent = e;
       }
@@ -76,7 +76,7 @@ describe("SwrCache", () => {
     });
 
     let rejectedEvent: CustomEvent | null = null;
-    cache.addEventListener("cache:change", (e: CustomEvent) => {
+    cache.addEventListener("state:update", (e: CustomEvent) => {
       if (e.detail.type === "rejected") {
         rejectedEvent = e;
       }
@@ -100,7 +100,7 @@ describe("SwrCache", () => {
     }
   });
 
-  it("should refresh stale cache entries in the background emitting 'cache:change' events", async () => {
+  it("should refresh stale cache entries in the background emitting 'state:update' events", async () => {
     // Use fake timers to simulate TTL expiry.
     vi.useFakeTimers();
 
@@ -121,7 +121,7 @@ describe("SwrCache", () => {
     });
 
     const events: CustomEvent[] = [];
-    cache.addEventListener("cache:change", (e: CustomEvent) => {
+    cache.addEventListener("state:update", (e: CustomEvent) => {
       events.push(e);
     });
 
@@ -186,7 +186,7 @@ describe("SwrCache", () => {
     }
   });
 
-  it("should clear the cache and emit a 'cache:clear' event", async () => {
+  it("should clear the cache and emit a 'state:reset' event", async () => {
     const getValue = vi.fn().mockResolvedValue("value");
     const cache = new SwrCache({
       getValue,
@@ -195,7 +195,7 @@ describe("SwrCache", () => {
     });
 
     let clearEventEmitted = false;
-    cache.addEventListener("cache:clear", () => {
+    cache.addEventListener("state:reset", () => {
       clearEventEmitted = true;
     });
 
@@ -224,7 +224,7 @@ describe("SwrCache", () => {
     });
 
     const capturedEvents: CustomEvent[] = [];
-    cache.addEventListener("cache:change", (e: CustomEvent) => {
+    cache.addEventListener("state:update", (e: CustomEvent) => {
       capturedEvents.push(e);
     });
 
