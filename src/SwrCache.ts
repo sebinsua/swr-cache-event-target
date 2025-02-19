@@ -29,9 +29,10 @@ function defaultRefreshStrategy<Param, Value>({
 }
 
 export type CacheEntry<P, V> = {
-  promise: PromiseWithMeta<V>;
-  expiry: number;
   param: P;
+  promise: PromiseWithMeta<V>;
+  refresh: Promise<void> | null;
+  expiry: number;
 };
 
 export type SwrCacheEntryState = "stale" | "resolved" | "rejected";
@@ -92,7 +93,7 @@ export class SwrCache<Param, Value> extends EventTarget {
     });
   }
 
-  async #refreshEntry(
+  async #createRefresh(
     key: string,
     entry: CacheEntry<Param, Value>,
     currentEpoch: number,
@@ -101,9 +102,10 @@ export class SwrCache<Param, Value> extends EventTarget {
       const promise = attachPromiseMeta(this.#config.getValue(entry.param));
 
       this.#cache.set(key, {
-        promise: promise,
-        expiry: performance.now() + this.#config.ttlMs,
         param: entry.param,
+        promise: promise,
+        refresh: null,
+        expiry: performance.now() + this.#config.ttlMs,
       });
 
       const value = await promise;
@@ -130,7 +132,22 @@ export class SwrCache<Param, Value> extends EventTarget {
           }),
         );
       }
+    } finally {
+      entry.refresh = null;
     }
+  }
+
+  #refreshEntry(
+    key: string,
+    entry: CacheEntry<Param, Value>,
+    currentEpoch: number,
+  ) {
+    // If there's already a refresh underway, return it.
+    if (entry.refresh) {
+      return entry.refresh;
+    }
+
+    entry.refresh = this.#createRefresh(key, entry, currentEpoch);
   }
 
   async #refreshStaleEntries() {
@@ -187,9 +204,10 @@ export class SwrCache<Param, Value> extends EventTarget {
       );
 
       const entry: CacheEntry<Param, Value> = {
-        promise,
-        expiry: performance.now() + this.#config.ttlMs,
         param,
+        promise,
+        refresh: null,
+        expiry: performance.now() + this.#config.ttlMs,
       };
       this.#cache.set(key, entry);
 
