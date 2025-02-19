@@ -56,22 +56,22 @@ export type SwrCacheConfig<Param, Value> = {
 };
 
 export class SwrCache<Param, Value> extends EventTarget {
-  private config: Required<SwrCacheConfig<Param, Value>>;
-  private cache: Map<string, CacheEntry<Param, Value>> = new Map();
-  private epoch = 0;
-  private abortController = new AbortController();
+  #config: Required<SwrCacheConfig<Param, Value>>;
+  #cache: Map<string, CacheEntry<Param, Value>> = new Map();
+  #abortController = new AbortController();
+  epoch = 0;
 
   constructor(config: SwrCacheConfig<Param, Value>) {
     super();
 
-    this.config = {
+    this.#config = {
       getKey: defaultGetKey,
       ttlMs: DEFAULT_TTL_MS,
       refreshStrategy: defaultRefreshStrategy,
       refreshIntervalMs: DEFAULT_REFRESH_INTERVAL_MS,
       ...config,
     };
-    if (this.config.refreshIntervalMs <= this.config.ttlMs) {
+    if (this.#config.refreshIntervalMs <= this.#config.ttlMs) {
       throw new Error("`refreshIntervalMs` must be greater than `ttlMs`.");
     }
 
@@ -81,34 +81,37 @@ export class SwrCache<Param, Value> extends EventTarget {
         const param = event.detail;
         this.prime(param);
       },
-      { signal: this.abortController.signal },
+      { signal: this.#abortController.signal },
     );
 
-    const refreshStrategy = this.config.refreshStrategy;
+    const refreshStrategy = this.#config.refreshStrategy;
     refreshStrategy({
-      refresh: () => this.refreshStaleEntries(),
-      config: this.config,
-      signal: this.abortController.signal,
+      refresh: () => this.#refreshStaleEntries(),
+      config: this.#config,
+      signal: this.#abortController.signal,
     });
   }
 
-  private async refreshEntry(
+  async #refreshEntry(
     key: string,
     entry: CacheEntry<Param, Value>,
     currentEpoch: number,
   ) {
     try {
-      const promise = attachPromiseMeta(this.config.getValue(entry.param));
+      const promise = attachPromiseMeta(this.#config.getValue(entry.param));
 
-      this.cache.set(key, {
+      this.#cache.set(key, {
         promise: promise,
-        expiry: performance.now() + this.config.ttlMs,
+        expiry: performance.now() + this.#config.ttlMs,
         param: entry.param,
       });
 
       const value = await promise;
 
-      if (this.epoch === currentEpoch && !this.abortController.signal.aborted) {
+      if (
+        this.epoch === currentEpoch &&
+        !this.#abortController.signal.aborted
+      ) {
         this.dispatchEvent(
           new CustomEvent("state:update", {
             detail: { type: "resolved", param: entry.param, value },
@@ -116,8 +119,11 @@ export class SwrCache<Param, Value> extends EventTarget {
         );
       }
     } catch (error) {
-      if (this.epoch === currentEpoch && !this.abortController.signal.aborted) {
-        this.cache.delete(key);
+      if (
+        this.epoch === currentEpoch &&
+        !this.#abortController.signal.aborted
+      ) {
+        this.#cache.delete(key);
         this.dispatchEvent(
           new CustomEvent("state:update", {
             detail: { type: "rejected", param: entry.param, error },
@@ -127,36 +133,36 @@ export class SwrCache<Param, Value> extends EventTarget {
     }
   }
 
-  private async refreshStaleEntries() {
-    if (this.cache.size === 0) {
+  async #refreshStaleEntries() {
+    if (this.#cache.size === 0) {
       return;
     }
 
     const now = performance.now();
-    const staleEntries = Array.from(this.cache.entries()).filter(
+    const staleEntries = Array.from(this.#cache.entries()).filter(
       ([_, entry]) =>
         entry.expiry <= now && entry.promise.status === "fulfilled",
     );
 
     const currentEpoch = this.epoch;
     for (const [key, entry] of staleEntries) {
-      await this.refreshEntry(key, entry, currentEpoch);
+      await this.#refreshEntry(key, entry, currentEpoch);
     }
   }
 
   #getEntry(param: Param): [key: string, entry: CacheEntry<Param, Value>] {
-    const key = this.config.getKey(param);
-    const entry = this.cache.get(key);
+    const key = this.#config.getKey(param);
+    const entry = this.#cache.get(key);
     const currentEpoch = this.epoch;
 
     if (!entry) {
-      const promise = attachPromiseMeta(this.config.getValue(param));
+      const promise = attachPromiseMeta(this.#config.getValue(param));
 
       promise.then(
         (value) => {
           if (
             this.epoch === currentEpoch &&
-            !this.abortController.signal.aborted
+            !this.#abortController.signal.aborted
           ) {
             this.dispatchEvent(
               new CustomEvent("state:update", {
@@ -168,9 +174,9 @@ export class SwrCache<Param, Value> extends EventTarget {
         (error) => {
           if (
             this.epoch === currentEpoch &&
-            !this.abortController.signal.aborted
+            !this.#abortController.signal.aborted
           ) {
-            this.cache.delete(key);
+            this.#cache.delete(key);
             this.dispatchEvent(
               new CustomEvent("state:update", {
                 detail: { type: "rejected", param, error },
@@ -182,10 +188,10 @@ export class SwrCache<Param, Value> extends EventTarget {
 
       const entry: CacheEntry<Param, Value> = {
         promise,
-        expiry: performance.now() + this.config.ttlMs,
+        expiry: performance.now() + this.#config.ttlMs,
         param,
       };
-      this.cache.set(key, entry);
+      this.#cache.set(key, entry);
 
       return [key, entry];
     }
@@ -194,7 +200,7 @@ export class SwrCache<Param, Value> extends EventTarget {
   }
 
   getAsync(param: Param): PromiseWithMeta<Value> {
-    if (this.abortController.signal.aborted) {
+    if (this.#abortController.signal.aborted) {
       return Promise.reject(
         new Error("Cache instance has been destroyed and is no longer viable."),
       );
@@ -217,7 +223,7 @@ export class SwrCache<Param, Value> extends EventTarget {
           }),
         );
 
-        void this.refreshEntry(key, entry, this.epoch);
+        void this.#refreshEntry(key, entry, this.epoch);
       }
     }
 
@@ -238,8 +244,8 @@ export class SwrCache<Param, Value> extends EventTarget {
   }
 
   peek(param: Param): Value | undefined {
-    const key = this.config.getKey(param);
-    const entry = this.cache.get(key);
+    const key = this.#config.getKey(param);
+    const entry = this.#cache.get(key);
     if (!entry) {
       return undefined;
     }
@@ -261,14 +267,14 @@ export class SwrCache<Param, Value> extends EventTarget {
 
   clear() {
     this.epoch++;
-    this.cache.clear();
+    this.#cache.clear();
     this.dispatchEvent(new CustomEvent("state:reset"));
   }
 
   destroy() {
     this.epoch++;
-    this.cache.clear();
-    this.abortController.abort();
+    this.#cache.clear();
+    this.#abortController.abort();
   }
 
   addEventListener<K extends keyof SwrCacheEvents<Param, Value>>(
@@ -292,7 +298,7 @@ export class SwrCache<Param, Value> extends EventTarget {
         : { capture: options !== false };
     super.addEventListener(type, listener, {
       ...opts,
-      signal: this.abortController.signal,
+      signal: this.#abortController.signal,
     });
   }
 
