@@ -199,6 +199,9 @@ export class SwrCache<Param, Value> extends EventTarget {
     return [key, entry];
   }
 
+  /**
+   * GetAsync will always return a *stable* Promise containing the requested value.
+   */
   getAsync(param: Param): PromiseWithMeta<Value> {
     if (this.#abortController.signal.aborted) {
       return Promise.reject(
@@ -230,6 +233,10 @@ export class SwrCache<Param, Value> extends EventTarget {
     return entry.promise;
   }
 
+  /**
+   * Read will attempt to synchronously read the cache, but fallback to
+   * initializing and returning a Promise if the cache is empty.
+   */
   read(param: Param): Value | PromiseWithMeta<Value> {
     const promise = this.getAsync(param);
     if (promise.status === "fulfilled" && promise.value !== undefined) {
@@ -239,10 +246,18 @@ export class SwrCache<Param, Value> extends EventTarget {
     return promise;
   }
 
+  /**
+   * Prime either initializes a cache entry or revalidates it, returning void.
+   */
   prime(param: Param) {
     void this.getAsync(param);
   }
 
+  /**
+   * Peek will always synchronously read the cache.
+   *
+   * Note: `peek` can revalidate cache entries in the background but is otherwise side-effect free.
+   */
   peek(param: Param): Value | undefined {
     const key = this.#config.getKey(param);
     const entry = this.#cache.get(key);
