@@ -44,7 +44,7 @@ export type SwrCacheEvents<Param, Value> = {
     value?: Value;
     error?: unknown;
   }>;
-  "state:prime": CustomEvent<Param>;
+  "state:prime": CustomEvent<{ key: string } | { param: Param }>;
   "state:reset": CustomEvent<void>;
 };
 
@@ -79,8 +79,28 @@ export class SwrCache<Param, Value> extends EventTarget {
     this.addEventListener(
       "state:prime",
       (event) => {
-        const param = event.detail;
-        this.prime(param);
+        const key =
+          "key" in event.detail
+            ? event.detail.key
+            : this.#config.getKey(event.detail.param);
+        const entry = this.#cache.get(key);
+        if (entry) {
+          if (
+            entry.promise.status === "fulfilled" &&
+            entry.promise.value !== undefined
+          ) {
+            this.dispatchEvent(
+              new CustomEvent("state:update", {
+                detail: {
+                  type: "resolved",
+                  param: entry.param,
+                  value: entry.promise.value,
+                },
+              }),
+            );
+          }
+          void this.#refreshEntry(key, entry, this.epoch);
+        }
       },
       { signal: this.#abortController.signal },
     );
