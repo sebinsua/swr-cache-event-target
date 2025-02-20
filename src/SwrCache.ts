@@ -93,6 +93,7 @@ export class SwrCache<Param, Value> extends EventTarget {
               new CustomEvent("state:update", {
                 detail: {
                   type: "resolved",
+                  key: key,
                   param: entry.param,
                   value: entry.promise.value,
                 },
