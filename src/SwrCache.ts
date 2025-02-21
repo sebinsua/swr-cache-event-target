@@ -84,11 +84,11 @@ export class SwrCache<Param, Value> extends EventTarget {
     this.addEventListener(
       "state:prime",
       (event) => {
-        const key =
-          "key" in event.detail
-            ? event.detail.key
-            : this.#config.getKey(event.detail.param);
-        const entry = this.#cache.get(key);
+        const [key, param] =
+          "param" in event.detail
+            ? [this.#config.getKey(event.detail.param), event.detail.param]
+            : [event.detail.key, event.detail.key as Param];
+        const [, entry] = this.#getEntry(param);
         if (entry) {
           if (
             entry.promise.status === "fulfilled" &&
