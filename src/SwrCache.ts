@@ -38,8 +38,13 @@ export type CacheEntry<P, V> = {
 export type SwrCacheEntryState = "stale" | "resolved" | "rejected";
 
 export type SwrCacheEvents<Param, Value> = {
+  "state:missing": CustomEvent<{
+    key: string;
+    param: Param;
+  }>;
   "state:update": CustomEvent<{
     type: SwrCacheEntryState;
+    key: string;
     param: Param;
     value?: Value;
     error?: unknown;
@@ -137,7 +142,7 @@ export class SwrCache<Param, Value> extends EventTarget {
       ) {
         this.dispatchEvent(
           new CustomEvent("state:update", {
-            detail: { type: "resolved", param: entry.param, value },
+            detail: { type: "resolved", key, param: entry.param, value },
           }),
         );
       }
@@ -149,7 +154,7 @@ export class SwrCache<Param, Value> extends EventTarget {
         this.#cache.delete(key);
         this.dispatchEvent(
           new CustomEvent("state:update", {
-            detail: { type: "rejected", param: entry.param, error },
+            detail: { type: "rejected", key, param: entry.param, error },
           }),
         );
       }
@@ -204,7 +209,7 @@ export class SwrCache<Param, Value> extends EventTarget {
           ) {
             this.dispatchEvent(
               new CustomEvent("state:update", {
-                detail: { type: "resolved", param, value },
+                detail: { type: "resolved", key, param, value },
               }),
             );
           }
@@ -217,11 +222,15 @@ export class SwrCache<Param, Value> extends EventTarget {
             this.#cache.delete(key);
             this.dispatchEvent(
               new CustomEvent("state:update", {
-                detail: { type: "rejected", param, error },
+                detail: { type: "rejected", key, param, error },
               }),
             );
           }
         },
+      );
+
+      this.dispatchEvent(
+        new CustomEvent("state:missing", { detail: { key, param } }),
       );
 
       const entry: CacheEntry<Param, Value> = {
@@ -259,6 +268,7 @@ export class SwrCache<Param, Value> extends EventTarget {
           new CustomEvent("state:update", {
             detail: {
               type: "stale",
+              key,
               param: entry.param,
               value: entry.promise.value,
             },
@@ -317,6 +327,12 @@ export class SwrCache<Param, Value> extends EventTarget {
     }
 
     return undefined;
+  }
+
+  onMissing(cb: EventListener) {
+    this.addEventListener("state:missing", cb, {
+      signal: this.#abortController.signal,
+    });
   }
 
   clear() {

@@ -55,6 +55,7 @@ describe("SwrCache", () => {
       expect(resolvedEvent).toBeDefined();
       expect(resolvedEvent!.detail).toEqual({
         type: "resolved",
+        key: "key-test-param",
         param: "test-param",
         value: resolvedValue,
       });
@@ -87,6 +88,7 @@ describe("SwrCache", () => {
       expect(rejectedEvent).not.toBeNull();
       expect(rejectedEvent!.detail).toEqual({
         type: "rejected",
+        key: "key-fail-param",
         param: "fail-param",
         error,
       });
